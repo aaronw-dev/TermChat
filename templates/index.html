@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>TermChat</title>
+  <link href="static/style.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+  <div id="signin" hidden>
+    <h1> Sign In! </h1>
+    <!-- <form id="accountform">
+      <input type="text" id="username" name="username">
+      <input id="send" type="submit" value="Sign In">
+    </form> -->
+  </div>
+  <div id="container">
+    <pre class="room-begin">
+      /$$$$$$$$                                 /$$$$$$  /$$                   /$$    
+      |__  $$__/                                /$$__  $$| $$                  | $$    
+         | $$  /$$$$$$   /$$$$$$  /$$$$$$/$$$$ | $$  \__/| $$$$$$$   /$$$$$$  /$$$$$$  
+         | $$ /$$__  $$ /$$__  $$| $$_  $$_  $$| $$      | $$__  $$ |____  $$|_  $$_/  
+         | $$| $$$$$$$$| $$  \__/| $$ \ $$ \ $$| $$      | $$  \ $$  /$$$$$$$  | $$    
+         | $$| $$_____/| $$      | $$ | $$ | $$| $$    $$| $$  | $$ /$$__  $$  | $$ /$$
+         | $$|  $$$$$$$| $$      | $$ | $$ | $$|  $$$$$$/| $$  | $$|  $$$$$$$  |  $$$$/
+         |__/ \_______/|__/      |__/ |__/ |__/ \______/ |__/  |__/ \_______/   \___/  
+      
+    </pre>
+    <hr>
+    <div id="typing"></div>
+  </div>
+  <form id="messageform">
+    <input type="text" id="message" name="message" autocomplete="off" autofocus>
+  </form>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js"
+    integrity="sha512-aMGMvNYu8Ue4G+fHa359jcPb1u+ytAF+P2SCb+PxrjCdO3n3ZTxJ30zuH39rimUggmTwmh2u7wvQsDTHESnmfQ=="
+    crossorigin="anonymous"></script>
+  <script>
+    String.prototype.replaceAt = function (index, replacement) {
+      return this.substring(0, index) + replacement + this.substring(index + replacement.length);
+    }
+    var socket = io();
+    socket.on('connect', function () {
+      socket.emit('my_event', { data: 'I\'m connected!' });
+    });
+
+    const messageform = document.getElementById("messageform")
+    const messagebox = document.getElementById("message")
+    const messagecontainer = document.getElementById("container")
+    const typingprompt = document.getElementById("typing")
+
+    function moveToBottom() {
+      messagecontainer.appendChild(typingprompt);
+    }
+    function CreateNewMessage(author, content) {
+      message = document.createElement('div');
+      message.innerHTML = author + ": " + content;
+      message.classList.add("postedmessage");
+      return message;
+    }
+
+    socket.on("onconnect", function (response) {
+      messagecontainer.appendChild(CreateNewMessage("Server", response.data))
+      moveToBottom();
+    })
+
+    socket.on("serverresponse", function (json) {
+      messagecontainer.appendChild(CreateNewMessage(json.author, json.content))
+      moveToBottom();
+    });
+
+    messageform.onsubmit = ev => {
+      ev.preventDefault()
+      messagecontainer.appendChild(CreateNewMessage("awdev", messagebox.value))
+      moveToBottom();
+      socket.emit('message', { data: messagebox.value });
+      messagebox.value = ""
+      typingprompt.innerHTML = ""
+    };
+    messagebox.addEventListener('keyup', evt => {
+      var preview = messagebox.value
+      preview = preview.replaceAt(evt.target.selectionStart, "▮")
+      typingprompt.innerHTML = preview
+      messagecontainer.scrollTop = messagecontainer.scrollHeight;
+    })
+    messagebox.addEventListener('input', function (evt) {
+      var preview = messagebox.value
+      preview = preview.replaceAt(evt.target.selectionStart, "▮")
+      typingprompt.innerHTML = preview
+      messagecontainer.scrollTop = messagecontainer.scrollHeight;
+    });
+  </script>
+</body>
+
+</html>

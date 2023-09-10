@@ -1,0 +1,92 @@
+@font-face {
+    font-family: Consolas;
+    src: url("/static/Consolas/consola.ttf");
+}
+
+@font-face {
+    font-family: Flow;
+    src: url("/static/flow.ttf");
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    color: lime;
+    overflow: hidden;
+}
+
+hr {
+    border: none;
+    border-top: 1px dashed lime;
+}
+
+body {
+    font-family: Consolas;
+    font-size: 15px;
+    background-size: 100%;
+}
+
+#container {
+    padding: 20px;
+    height: 100vh;
+    width: 100vw;
+    top: 0;
+    display: block;
+    backdrop-filter: blur(20px);
+    background: rgb(14, 14, 14);
+    box-shadow: 1px 1px 20px 4px #000000 inset;
+    overflow-y: scroll;
+    position: absolute;
+}
+
+#container::-webkit-scrollbar {
+    width: 12px;
+}
+
+#container::-webkit-scrollbar-track {
+    -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+}
+
+#container::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5);
+}
+
+#messageform {
+    margin: 20px;
+    height: 50px;
+    display: flex;
+    bottom: 0;
+}
+
+textarea:focus,
+input:focus {
+    outline: none;
+}
+
+.postedmessage {
+    margin-bottom: 10px;
+}
+
+.room-begin {
+    text-align: center;
+}
+
+#signin {
+    text-align: center;
+    position: absolute;
+    z-index: 10;
+    backdrop-filter: blur(5px);
+    width: 30%;
+    height: 40%;
+    left: 50%;
+    top: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    transform: translate(-50%, -50%);
+}
+
+#typing {
+    margin-bottom: 30px;
+}
