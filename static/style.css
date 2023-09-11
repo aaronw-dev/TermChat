@@ -94,3 +94,16 @@ input:focus {
     display: inline-block;
     margin-left: 4em;
 }
+
+#user-list {
+    float: right;
+    transform: translate(-50%);
+}
+
+#user-list ul {
+    list-style-type: none;
+}
+
+#user-list ul:first-child {
+    text-underline-offset: 5px;
+}
