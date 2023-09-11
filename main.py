@@ -29,15 +29,20 @@ def test_disconnect():
 
 @socketio.on('message')
 def handle_message(data):
-    message = data["data"]
-    message = message.strip()
-    print('received message: ' + CBLUE + message + CEND)
+    message = data["data"].strip()
+    author = data["author"].strip()
+    print('Received message: ' + CBLUE + message + CEND)
     responsejson = {
-        "author": "server",
-        "content": "This is what you said: \"" + message + "\" at " + datetime.now().strftime("%H:%M"),
+        "author": author,
+        "content": message,
         "timestamp": datetime.now().timestamp()
     }
     emit("serverresponse", responsejson, broadcast=True)
+
+
+@socketio.on('ping')
+def ping():
+    emit("pingresponse")
 
 
 @app.errorhandler(500)
