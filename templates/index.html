@@ -28,6 +28,12 @@
     <span class="tab"></span>
     <span id="status-text">Status: disconnected</span>
     <hr>
+
+    <div id="user-list">
+      <ul>
+        <li><u>Users</u></li>
+      </ul>
+    </div>
     <div id="typing">
       ▮
     </div>
@@ -50,6 +56,7 @@
     const pingcount = document.getElementById("ping-count")
     const currenttime = document.getElementById("current-time")
     const statustext = document.getElementById("status-text")
+    const userlist = document.getElementById("user-list")
 
     var username = ""
 
@@ -91,6 +98,9 @@
         "/disconnect": () => {
           socket.ondisconnect()
           console.log("Disconnected.")
+        },
+        "/reconnect": () => {
+          socket.connect();
         }
       }
 
@@ -116,9 +126,15 @@
         messagecontainer.appendChild(typingprompt);
       }
 
-      function CreateNewMessage(author, content) {
+      function CreateNewMessage(author, content, epochdate) {
         message = document.createElement('div');
-        message.innerHTML = author + ": " + content;
+        if (epochdate != null) {
+          timestamp = new Date(epochdate * 1000)
+          console.log(timestamp)
+          message.innerHTML = author + ": " + content + " (" + timestamp.toLocaleTimeString() + ")";
+        } else {
+          message.innerHTML = author + ": " + content;
+        }
         message.classList.add("postedmessage");
         return message;
       }
@@ -129,30 +145,37 @@
         messagecontainer.scrollTop = messagecontainer.scrollHeight;
         moveToBottom();
       })
-      socket.on("disconnect", () => {
+      socket.on("disconnect", function (response) {
         statustext.innerHTML = "Status: disconnected"
         messagecontainer.appendChild(CreateNewMessage("Server", "disconnected from server."))
         messagecontainer.scrollTop = messagecontainer.scrollHeight;
         moveToBottom();
       });
       socket.on("serverresponse", function (json) {
-        messagecontainer.appendChild(CreateNewMessage(json.author, json.content))
+        messagecontainer.appendChild(CreateNewMessage(json.author, json.content, json.timestamp))
+        messagecontainer.scrollTop = messagecontainer.scrollHeight;
+        moveToBottom();
+      });
+      socket.on("userjoin", function (json) {
+        messagecontainer.appendChild(CreateNewMessage(json.author, json.content, json.timestamp))
         messagecontainer.scrollTop = messagecontainer.scrollHeight;
         moveToBottom();
       });
 
       messageform.onsubmit = ev => {
         ev.preventDefault()
-        if (!socket.connected) {
-          messagebox.value = ""
-          typingprompt.innerHTML = ""
-          messagecontainer.appendChild(CreateNewMessage("Server", "you're not connected... Reconnect to continue sending messages."))
-          return
-        }
         if (isCommand(messagebox.value)) {
           runCommand(messagebox.value)
           messagebox.value = ""
           typingprompt.innerHTML = ""
+          moveToBottom();
+          return
+        }
+        if (!socket.connected) {
+          messagebox.value = ""
+          typingprompt.innerHTML = ""
+          messagecontainer.appendChild(CreateNewMessage("Server", "you're not connected... Reconnect to continue sending messages."))
+          moveToBottom();
           return
         }
         socket.emit('message', { data: messagebox.value, author: username });
