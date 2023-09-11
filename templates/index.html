@@ -5,17 +5,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
   <title>TermChat</title>
+  <link rel="icon" href="/static/icon.png">
   <link href="static/style.css" rel="stylesheet" type="text/css" />
 </head>
 
 <body>
-  <div id="signin" hidden>
-    <h1> Sign In! </h1>
-    <!-- <form id="accountform">
-      <input type="text" id="username" name="username">
-      <input id="send" type="submit" value="Sign In">
-    </form> -->
-  </div>
   <div id="container">
     <pre class="room-begin">
       /$$$$$$$$                                 /$$$$$$  /$$                   /$$    
@@ -28,8 +22,15 @@
          |__/ \_______/|__/      |__/ |__/ |__/ \______/ |__/  |__/ \_______/   \___/  
       
     </pre>
+    <span id="ping-count">Ping: n/a</span>
+    <span class="tab"></span>
+    <span id="current-time">Time: loading...</span>
+    <span class="tab"></span>
+    <span id="status-text">Status: disconnected</span>
     <hr>
-    <div id="typing"></div>
+    <div id="typing">
+      ▮
+    </div>
   </div>
   <form id="messageform">
     <input type="text" id="message" name="message" autocomplete="off" autofocus>
@@ -41,56 +42,137 @@
     String.prototype.replaceAt = function (index, replacement) {
       return this.substring(0, index) + replacement + this.substring(index + replacement.length);
     }
-    var socket = io();
-    socket.on('connect', function () {
-      socket.emit('my_event', { data: 'I\'m connected!' });
-    });
 
     const messageform = document.getElementById("messageform")
     const messagebox = document.getElementById("message")
     const messagecontainer = document.getElementById("container")
     const typingprompt = document.getElementById("typing")
+    const pingcount = document.getElementById("ping-count")
+    const currenttime = document.getElementById("current-time")
+    const statustext = document.getElementById("status-text")
 
-    function moveToBottom() {
-      messagecontainer.appendChild(typingprompt);
-    }
-    function CreateNewMessage(author, content) {
-      message = document.createElement('div');
-      message.innerHTML = author + ": " + content;
-      message.classList.add("postedmessage");
-      return message;
-    }
+    var username = ""
 
-    socket.on("onconnect", function (response) {
-      messagecontainer.appendChild(CreateNewMessage("Server", response.data))
-      moveToBottom();
+    document.addEventListener("keydown", evt => {
+      messagebox.focus();
     })
+    function input(prompt, callback) {
+      typingprompt.innerHTML = prompt + "▮"
+      messagebox.onkeyup = evt => {
+        var preview = messagebox.value
+        preview = preview.replaceAt(evt.target.selectionStart, "▮")
+        typingprompt.innerHTML = prompt + preview
+        messagecontainer.scrollTop = messagecontainer.scrollHeight;
+      }
+      messagebox.oninput = evt => {
+        var preview = messagebox.value
+        preview = preview.replaceAt(evt.target.selectionStart, "▮")
+        typingprompt.innerHTML = prompt + preview
+        messagecontainer.scrollTop = messagecontainer.scrollHeight;
+      }
+      messageform.onsubmit = ev => {
+        ev.preventDefault()
+        username = messagebox.value
+        messagebox.value = ""
+        typingprompt.innerHTML = ""
+        callback()
+      };
+    }
+    input("Username: ", main)
+    currenttime.innerHTML = "Time: " + new Date().toLocaleTimeString()
+    setInterval(() => {
+      currenttime.innerHTML = "Time: " + new Date().toLocaleTimeString()
+    }, 1000);
+    function main() {
+      var socket = io();
+      var lastping;
 
-    socket.on("serverresponse", function (json) {
-      messagecontainer.appendChild(CreateNewMessage(json.author, json.content))
-      moveToBottom();
-    });
+      const commands = {
+        "/disconnect": () => {
+          socket.ondisconnect()
+          console.log("Disconnected.")
+        }
+      }
 
-    messageform.onsubmit = ev => {
-      ev.preventDefault()
-      messagecontainer.appendChild(CreateNewMessage("awdev", messagebox.value))
-      moveToBottom();
-      socket.emit('message', { data: messagebox.value });
-      messagebox.value = ""
-      typingprompt.innerHTML = ""
-    };
-    messagebox.addEventListener('keyup', evt => {
-      var preview = messagebox.value
-      preview = preview.replaceAt(evt.target.selectionStart, "▮")
-      typingprompt.innerHTML = preview
-      messagecontainer.scrollTop = messagecontainer.scrollHeight;
-    })
-    messagebox.addEventListener('input', function (evt) {
-      var preview = messagebox.value
-      preview = preview.replaceAt(evt.target.selectionStart, "▮")
-      typingprompt.innerHTML = preview
-      messagecontainer.scrollTop = messagecontainer.scrollHeight;
-    });
+      setInterval(() => {
+        lastping = Date.now()
+        socket.emit("ping")
+      }, 1000);
+
+      socket.on("pingresponse", function (response) {
+        var ping = Date.now() - lastping
+        pingcount.innerHTML = "Ping: " + ping + "ms"
+      })
+
+      function isCommand(text) {
+        return text in commands
+      }
+
+      function runCommand(commandname) {
+        commands[commandname]();
+      }
+
+      function moveToBottom() {
+        messagecontainer.appendChild(typingprompt);
+      }
+
+      function CreateNewMessage(author, content) {
+        message = document.createElement('div');
+        message.innerHTML = author + ": " + content;
+        message.classList.add("postedmessage");
+        return message;
+      }
+
+      socket.on("onconnect", function (response) {
+        statustext.innerHTML = "Status: connected"
+        messagecontainer.appendChild(CreateNewMessage("Server", "you're now connected!"))
+        messagecontainer.scrollTop = messagecontainer.scrollHeight;
+        moveToBottom();
+      })
+      socket.on("disconnect", () => {
+        statustext.innerHTML = "Status: disconnected"
+        messagecontainer.appendChild(CreateNewMessage("Server", "disconnected from server."))
+        messagecontainer.scrollTop = messagecontainer.scrollHeight;
+        moveToBottom();
+      });
+      socket.on("serverresponse", function (json) {
+        messagecontainer.appendChild(CreateNewMessage(json.author, json.content))
+        messagecontainer.scrollTop = messagecontainer.scrollHeight;
+        moveToBottom();
+      });
+
+      messageform.onsubmit = ev => {
+        ev.preventDefault()
+        if (!socket.connected) {
+          messagebox.value = ""
+          typingprompt.innerHTML = ""
+          messagecontainer.appendChild(CreateNewMessage("Server", "you're not connected... Reconnect to continue sending messages."))
+          return
+        }
+        if (isCommand(messagebox.value)) {
+          runCommand(messagebox.value)
+          messagebox.value = ""
+          typingprompt.innerHTML = ""
+          return
+        }
+        socket.emit('message', { data: messagebox.value, author: username });
+        messagebox.value = ""
+        typingprompt.innerHTML = ""
+      };
+
+      messagebox.onkeyup = evt => {
+        var preview = messagebox.value
+        preview = preview.replaceAt(evt.target.selectionStart, "▮")
+        typingprompt.innerHTML = preview
+        messagecontainer.scrollTop = messagecontainer.scrollHeight;
+      }
+      messagebox.oninput = evt => {
+        var preview = messagebox.value
+        preview = preview.replaceAt(evt.target.selectionStart, "▮")
+        typingprompt.innerHTML = preview
+        messagecontainer.scrollTop = messagecontainer.scrollHeight;
+      }
+    }
   </script>
 </body>
 
