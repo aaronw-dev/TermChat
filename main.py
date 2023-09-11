@@ -17,9 +17,9 @@ def homepage():
 
 
 @socketio.on('connect')
-def test_connect():
+def connect():
     print(CGREEN2 + "Client connected." + CEND)
-    emit('onconnect', {'data': 'Connected'})
+    emit('userjoin', {'data': 'Connected'}, broadcast=True)
 
 
 @socketio.on('disconnect')
@@ -31,7 +31,7 @@ def test_disconnect():
 def handle_message(data):
     message = data["data"].strip()
     author = data["author"].strip()
-    print('Received message: ' + CBLUE + message + CEND)
+    print(CVIOLET + author + CEND + ' : ' + CBLUE + message + CEND)
     responsejson = {
         "author": author,
         "content": message,
