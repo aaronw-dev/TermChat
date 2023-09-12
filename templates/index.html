@@ -29,9 +29,9 @@
     <span id="status-text">Status: disconnected</span>
     <hr>
 
-    <div id="user-list">
-      <ul>
-        <li><u>Users</u></li>
+    <div class="user-list">
+      <span><u>Users</u></span>
+      <ul id="user-list">
       </ul>
     </div>
     <div id="typing">
@@ -39,11 +39,9 @@
     </div>
   </div>
   <form id="messageform">
-    <input type="text" id="message" name="message" autocomplete="off" autofocus>
+    <input type="text" id="message" name="message" autocomplete="off">
   </form>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js"
-    integrity="sha512-aMGMvNYu8Ue4G+fHa359jcPb1u+ytAF+P2SCb+PxrjCdO3n3ZTxJ30zuH39rimUggmTwmh2u7wvQsDTHESnmfQ=="
-    crossorigin="anonymous"></script>
+  <script src="/static/socket.io.js"></script>
   <script>
     String.prototype.replaceAt = function (index, replacement) {
       return this.substring(0, index) + replacement + this.substring(index + replacement.length);
@@ -57,8 +55,9 @@
     const currenttime = document.getElementById("current-time")
     const statustext = document.getElementById("status-text")
     const userlist = document.getElementById("user-list")
-
     var username = ""
+
+    messagebox.focus();
 
     document.addEventListener("keydown", evt => {
       messagebox.focus();
@@ -94,26 +93,41 @@
       var socket = io();
       var lastping;
 
+      var pinginterval = setInterval(() => {
+        lastping = Date.now()
+        socket.emit("ping")
+      }, 1000);
+
       const commands = {
         "/disconnect": () => {
+          socket.emit("left", { user: username })
+          pingcount.innerHTML = "n/a"
           socket.ondisconnect()
           console.log("Disconnected.")
+          alert("Disconnecting...")
+          clearInterval(pinginterval);
         },
         "/reconnect": () => {
           socket.connect();
         }
       }
 
-      setInterval(() => {
-        lastping = Date.now()
-        socket.emit("ping")
-      }, 1000);
+      window.onbeforeunload = closingCode;
+      function closingCode() {
+        commands["/disconnect"]();
+        return null;
+      }
 
       socket.on("pingresponse", function (response) {
         var ping = Date.now() - lastping
         pingcount.innerHTML = "Ping: " + ping + "ms"
       })
 
+      function resetUserList() {
+        while (userlist.firstChild) {
+          userlist.removeChild(userlist.lastChild);
+        }
+      }
       function isCommand(text) {
         return text in commands
       }
@@ -139,29 +153,39 @@
         return message;
       }
 
-      socket.on("onconnect", function (response) {
+      socket.on("onconnect", function () {
+        socket.emit("joined", { user: username })
         statustext.innerHTML = "Status: connected"
         messagecontainer.appendChild(CreateNewMessage("Server", "you're now connected!"))
         messagecontainer.scrollTop = messagecontainer.scrollHeight;
         moveToBottom();
+        resetUserList();
       })
-      socket.on("disconnect", function (response) {
+      socket.on("disconnect", function () {
         statustext.innerHTML = "Status: disconnected"
         messagecontainer.appendChild(CreateNewMessage("Server", "disconnected from server."))
         messagecontainer.scrollTop = messagecontainer.scrollHeight;
         moveToBottom();
+        resetUserList();
       });
-      socket.on("serverresponse", function (json) {
+      socket.on("onmessage", function (json) {
         messagecontainer.appendChild(CreateNewMessage(json.author, json.content, json.timestamp))
         messagecontainer.scrollTop = messagecontainer.scrollHeight;
         moveToBottom();
       });
-      socket.on("userjoin", function (json) {
-        messagecontainer.appendChild(CreateNewMessage(json.author, json.content, json.timestamp))
+      socket.on("userupdate", function (json) {
+        resetUserList()
+        json.users.forEach(user => {
+          userelement = document.createElement("li")
+          userelement.innerHTML = user
+          userlist.appendChild(userelement)
+        });
+      });
+      socket.on("userleft", function (json) {
+        messagecontainer.appendChild(CreateNewMessage("Server", json.user + " left."))
         messagecontainer.scrollTop = messagecontainer.scrollHeight;
         moveToBottom();
-      });
-
+      })
       messageform.onsubmit = ev => {
         ev.preventDefault()
         if (isCommand(messagebox.value)) {
