@@ -1,3 +1,8 @@
 # TermChat
+TermChat is a terminal-themed messaging platform build with Flask and SocketIO. THere is no server-side logging and messages are end-to-end encrypted for maximum security. Architecture will soon move from a huge forum to separate rooms.
 
-A terminal-themed chat app powered by SocketIO. I made this because I had nothing else to do on a weekend.
+## TODO
+- [ ] Add rooms
+- [x] Add member list
+- [ ] add encryption
+- [ ] find deployment options
