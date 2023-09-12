@@ -8,7 +8,7 @@ os.system("")
 app = Flask(__name__)
 socketio = SocketIO(app)
 
-opensockets = []
+connectedusers = []
 
 
 @app.route('/')
@@ -18,13 +18,25 @@ def homepage():
 
 @socketio.on('connect')
 def connect():
-    print(CGREEN2 + "Client connected." + CEND)
-    emit('userjoin', {'data': 'Connected'}, broadcast=True)
+    emit('onconnect')
 
 
-@socketio.on('disconnect')
-def test_disconnect():
-    print(CRED + 'Client disconnected' + CEND)
+@socketio.on("joined")
+def joined(payload):
+    username = payload["user"]
+    print(CGREEN2 + "Client connected as username: " + CYELLOW + username + CEND)
+    connectedusers.append(username)
+    emit("userupdate", {"users": connectedusers}, broadcast=True)
+
+
+@socketio.on("left")
+def left(payload):
+    print("SOMEBODY LEFT!!!")
+    username = payload["user"]
+    connectedusers.remove(username)
+    print(CRED + "Client left as username: " + CYELLOW + username + CEND)
+    emit("userupdate", {"users": connectedusers}, broadcast=True)
+    emit("userleft", {"user": username}, broadcast=True)
 
 
 @socketio.on('message')
@@ -37,7 +49,7 @@ def handle_message(data):
         "content": message,
         "timestamp": datetime.now().timestamp()
     }
-    emit("serverresponse", responsejson, broadcast=True)
+    emit("onmessage", responsejson, broadcast=True)
 
 
 @socketio.on('ping')
