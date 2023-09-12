@@ -95,15 +95,16 @@ input:focus {
     margin-left: 4em;
 }
 
-#user-list {
+.user-list {
     float: right;
+    text-align: right;
     transform: translate(-50%);
 }
 
-#user-list ul {
+#user-list {
     list-style-type: none;
 }
 
-#user-list ul:first-child {
+.user-list span {
     text-underline-offset: 5px;
 }
