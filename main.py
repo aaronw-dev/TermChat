@@ -31,7 +31,6 @@ def joined(payload):
 
 @socketio.on("left")
 def left(payload):
-    print("SOMEBODY LEFT!!!")
     username = payload["user"]
     connectedusers.remove(username)
     print(CRED + "Client left as username: " + CYELLOW + username + CEND)
@@ -43,11 +42,13 @@ def left(payload):
 def handle_message(data):
     message = data["data"].strip()
     author = data["author"].strip()
+    pubkey = data["publickey"].strip()
     print(CVIOLET + author + CEND + ' : ' + CBLUE + message + CEND)
     responsejson = {
         "author": author,
         "content": message,
-        "timestamp": datetime.now().timestamp()
+        "timestamp": datetime.now().timestamp(),
+        "pubkey": pubkey
     }
     emit("onmessage", responsejson, broadcast=True)
 
