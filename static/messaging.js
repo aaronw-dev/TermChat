@@ -13,6 +13,8 @@ const statustext = document.getElementById("status-text")
 const userlist = document.getElementById("user-list")
 const crypt = new JSEncrypt({ default_key_size: 1024 });
 var username = ""
+var userid
+var connectedusers = {}
 
 messagebox.focus();
 
@@ -24,7 +26,6 @@ function generateKeys() {
         setTimeout(() => {
             const pubkey = crypt.getPublicKey()
             const privkey = crypt.getPrivateKey()
-            console.log({ pubkey, privkey })
             resolve({ pubkey, privkey });
         }, 50);
     });
@@ -69,8 +70,8 @@ async function main() {
     const startTime = Date.now()
     const result = await generateKeys();
     const resultTime = Date.now() - startTime
-    const pubkey = result.pubkey.substring(26, result.pubkey.length - 24)
-    const privkey = result.privkey.substring(26, result.privkey.length - 24)
+    const pubkey = result.pubkey.substring(28, result.pubkey.length - 26)
+    const privkey = result.privkey.substring(33, result.privkey.length - 31)
     messagecontainer.appendChild(CreateNewMessage("Server", "finished generating encryption keys in " + resultTime + "ms"))
     var socket = io();
     var lastping;
@@ -82,15 +83,17 @@ async function main() {
 
     const commands = {
         "/disconnect": () => {
-            socket.emit("left", { user: username })
+            socket.emit("left", { uid: userid })
             pingcount.innerHTML = "n/a"
             socket.ondisconnect()
-            console.log("Disconnected.")
-            alert("Disconnecting...")
             clearInterval(pinginterval);
         },
         "/reconnect": () => {
             socket.connect();
+            pinginterval = setInterval(() => {
+                lastping = Date.now()
+                socket.emit("ping")
+            }, 1000);
         }
     }
 
@@ -130,15 +133,16 @@ async function main() {
         return message;
     }
 
-    socket.on("onconnect", function () {
-        socket.emit("joined", { user: username })
+    socket.on("onconnect", function (json) {
+        userid = json.uid
+        socket.emit("joined", { user: username, uid: userid, pubkey: pubkey })
         statustext.innerHTML = "Status: connected"
         messagecontainer.appendChild(CreateNewMessage("Server", "you're now connected!"))
         messagecontainer.scrollTop = messagecontainer.scrollHeight;
         moveToBottom();
         resetUserList();
     })
-    socket.on("disconnect", function () {
+    socket.on("disconnect", function (json) {
         statustext.innerHTML = "Status: disconnected"
         messagecontainer.appendChild(CreateNewMessage("Server", "disconnected from server."))
         messagecontainer.scrollTop = messagecontainer.scrollHeight;
@@ -152,14 +156,15 @@ async function main() {
     });
     socket.on("userupdate", function (json) {
         resetUserList()
-        json.users.forEach(user => {
+        connectedusers = json.users
+        for (const [id, user] of Object.entries(connectedusers)) {
             userelement = document.createElement("li")
-            userelement.innerHTML = user
+            userelement.innerHTML = id + " (" + user.username + ")"
             userlist.appendChild(userelement)
-        });
+        };
     });
     socket.on("userleft", function (json) {
-        messagecontainer.appendChild(CreateNewMessage("Server", json.user + " left."))
+        messagecontainer.appendChild(CreateNewMessage("Server", connectedusers[json.uid].username + " left."))
         messagecontainer.scrollTop = messagecontainer.scrollHeight;
         moveToBottom();
     })
