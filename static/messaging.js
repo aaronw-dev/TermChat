@@ -11,6 +11,7 @@ const pingcount = document.getElementById("ping-count")
 const currenttime = document.getElementById("current-time")
 const statustext = document.getElementById("status-text")
 const userlist = document.getElementById("user-list")
+const crypt = new JSEncrypt({ default_key_size: 1024 });
 var username = ""
 
 messagebox.focus();
@@ -18,6 +19,19 @@ messagebox.focus();
 document.addEventListener("keydown", evt => {
     messagebox.focus();
 })
+function generateKeys() {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            const pubkey = crypt.getPublicKey()
+            const privkey = crypt.getPrivateKey()
+            console.log({ pubkey, privkey })
+            resolve({ pubkey, privkey });
+        }, 50);
+    });
+}
+function moveToBottom() {
+    messagecontainer.appendChild(typingprompt);
+}
 function input(prompt, callback) {
     typingprompt.innerHTML = prompt + "▮"
     messagebox.onkeyup = evt => {
@@ -25,18 +39,21 @@ function input(prompt, callback) {
         preview = preview.replaceAt(evt.target.selectionStart, "▮")
         typingprompt.innerHTML = prompt + preview
         messagecontainer.scrollTop = messagecontainer.scrollHeight;
+        moveToBottom()
     }
     messagebox.oninput = evt => {
         var preview = messagebox.value
         preview = preview.replaceAt(evt.target.selectionStart, "▮")
         typingprompt.innerHTML = prompt + preview
         messagecontainer.scrollTop = messagecontainer.scrollHeight;
+        moveToBottom()
     }
     messageform.onsubmit = ev => {
         ev.preventDefault()
         username = messagebox.value
         messagebox.value = ""
         typingprompt.innerHTML = ""
+        moveToBottom()
         callback()
     };
 }
@@ -45,7 +62,16 @@ currenttime.innerHTML = "Time: " + new Date().toLocaleTimeString()
 setInterval(() => {
     currenttime.innerHTML = "Time: " + new Date().toLocaleTimeString()
 }, 1000);
-function main() {
+
+async function main() {
+
+    messagecontainer.appendChild(CreateNewMessage("Server", "generating encryption keys..."))
+    const startTime = Date.now()
+    const result = await generateKeys();
+    const resultTime = Date.now() - startTime
+    const pubkey = result.pubkey.substring(26, result.pubkey.length - 24)
+    const privkey = result.privkey.substring(26, result.privkey.length - 24)
+    messagecontainer.appendChild(CreateNewMessage("Server", "finished generating encryption keys in " + resultTime + "ms"))
     var socket = io();
     var lastping;
 
@@ -92,15 +118,10 @@ function main() {
         commands[commandname]();
     }
 
-    function moveToBottom() {
-        messagecontainer.appendChild(typingprompt);
-    }
-
     function CreateNewMessage(author, content, epochdate) {
         message = document.createElement('div');
         if (epochdate != null) {
             timestamp = new Date(epochdate * 1000)
-            console.log(timestamp)
             message.innerHTML = author + ": " + content + " (" + timestamp.toLocaleTimeString() + ")";
         } else {
             message.innerHTML = author + ": " + content;
@@ -158,7 +179,7 @@ function main() {
             moveToBottom();
             return
         }
-        socket.emit('message', { data: messagebox.value, author: username });
+        socket.emit('message', { data: messagebox.value, author: username, publickey: pubkey });
         messagebox.value = ""
         typingprompt.innerHTML = ""
     };
