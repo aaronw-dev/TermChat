@@ -4,11 +4,19 @@ from flask import Flask, render_template, request
 from flask_socketio import SocketIO, send, emit
 from colors import *
 import os
+from random import randint
+
 os.system("")
 app = Flask(__name__)
 socketio = SocketIO(app)
 
-connectedusers = []
+connectedusers = {}
+
+
+def genuid(n):
+    range_start = 10**(n-1)
+    range_end = (10**n)-1
+    return randint(range_start, range_end)
 
 
 @app.route('/')
@@ -18,24 +26,31 @@ def homepage():
 
 @socketio.on('connect')
 def connect():
-    emit('onconnect')
+    userid = genuid(10)
+    while userid in connectedusers:
+        userid = genuid(10)
+    emit('onconnect', {"uid": userid})
 
 
 @socketio.on("joined")
 def joined(payload):
     username = payload["user"]
-    print(CGREEN2 + "Client connected as username: " + CYELLOW + username + CEND)
-    connectedusers.append(username)
+    userid = payload["uid"]
+    pubkey = payload["pubkey"]
+    print(CGREEN2 + "Client connected as username: " +
+          CYELLOW + username + CGREEN2 + " and id: " + CYELLOW + str(userid) + CEND)
+    connectedusers[userid] = {"username": username}
     emit("userupdate", {"users": connectedusers}, broadcast=True)
 
 
 @socketio.on("left")
 def left(payload):
-    username = payload["user"]
-    connectedusers.remove(username)
-    print(CRED + "Client left as username: " + CYELLOW + username + CEND)
+    uid = payload["uid"]
+    print(CRED + "Client left as username: " +
+          CYELLOW + connectedusers[uid]["username"] + CRED + " and id: " + CYELLOW + str(uid) + CEND)
     emit("userupdate", {"users": connectedusers}, broadcast=True)
-    emit("userleft", {"user": username}, broadcast=True)
+    emit("userleft", {"uid": uid}, broadcast=True)
+    connectedusers.pop(uid)
 
 
 @socketio.on('message')
@@ -47,8 +62,7 @@ def handle_message(data):
     responsejson = {
         "author": author,
         "content": message,
-        "timestamp": datetime.now().timestamp(),
-        "pubkey": pubkey
+        "timestamp": datetime.now().timestamp()
     }
     emit("onmessage", responsejson, broadcast=True)
 
