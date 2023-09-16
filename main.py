@@ -88,5 +88,5 @@ def index():
 
 
 if __name__ == '__main__':
-    print(CYELLOW + "Running now." + CEND)
+    print(CYELLOW + "Running on " + CBLUE + "http://127.0.0.1:5000" + CEND)
     socketio.run(app, host='0.0.0.0', port=5000)
