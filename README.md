@@ -4,6 +4,6 @@ TermChat is a terminal-themed messaging platform build with Flask and SocketIO. 
 ## TODO
 - [ ] Implement rooms
 - [x] Implement member list
-- [ ] Implement encryption (in progress)
+- [x] Implement encryption (in progress)
 - [ ] Find deployment options
 - [x] Implement user IDs
