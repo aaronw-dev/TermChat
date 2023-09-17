@@ -8,7 +8,7 @@ from random import randint
 
 os.system("")
 app = Flask(__name__)
-socketio = SocketIO(app)
+socketio = SocketIO(app, ping_timeout=5000, ping_interval=10000)
 
 connectedusers = {}
 
@@ -22,6 +22,26 @@ def genuid(n):
 @app.route('/')
 def homepage():
     return render_template('index.html')
+
+
+@socketio.on('directmess')
+def directmess(payload):
+    message = payload["data"].strip()
+    author = payload["author"].strip()
+    to = payload["to"].strip()
+    print(
+        CVIOLET + author +
+        CBEIGE + " to " +
+        CVIOLET + connectedusers[int(to)]["username"] +
+        CEND + ' : ' +
+        CBLUE + message + CEND
+    )
+    responsejson = {
+        "author": author,
+        "content": message,
+        "timestamp": datetime.now().timestamp()
+    }
+    emit("onmessage", responsejson, to=connectedusers[int(to)]["clientid"])
 
 
 @socketio.on('connect')
@@ -39,7 +59,11 @@ def joined(payload):
     pubkey = payload["pubkey"]
     print(CGREEN2 + "Client connected as username: " +
           CYELLOW + username + CGREEN2 + " and id: " + CYELLOW + str(userid) + CEND)
-    connectedusers[userid] = {"username": username}
+    connectedusers[userid] = {
+        "username": username,
+        "clientid": request.sid,  # type: ignore
+        "pubkey": pubkey
+    }
     emit("userupdate", {"users": connectedusers}, broadcast=True)
 
 
@@ -51,20 +75,6 @@ def left(payload):
     emit("userupdate", {"users": connectedusers}, broadcast=True)
     emit("userleft", {"uid": uid}, broadcast=True)
     connectedusers.pop(uid)
-
-
-@socketio.on('message')
-def handle_message(data):
-    message = data["data"].strip()
-    author = data["author"].strip()
-    pubkey = data["publickey"].strip()
-    print(CVIOLET + author + CEND + ' : ' + CBLUE + message + CEND)
-    responsejson = {
-        "author": author,
-        "content": message,
-        "timestamp": datetime.now().timestamp()
-    }
-    emit("onmessage", responsejson, broadcast=True)
 
 
 @socketio.on('ping')
