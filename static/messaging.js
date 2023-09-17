@@ -11,7 +11,6 @@ const pingcount = document.getElementById("ping-count")
 const currenttime = document.getElementById("current-time")
 const statustext = document.getElementById("status-text")
 const userlist = document.getElementById("user-list")
-const crypt = new JSEncrypt({ default_key_size: 1024 });
 var username = ""
 var userid
 var connectedusers = {}
@@ -24,6 +23,7 @@ document.addEventListener("keydown", evt => {
 function generateKeys() {
     return new Promise((resolve) => {
         setTimeout(() => {
+            const crypt = new JSEncrypt({ default_key_size: 1024 });
             const pubkey = crypt.getPublicKey()
             const privkey = crypt.getPrivateKey()
             resolve({ pubkey, privkey });
@@ -70,8 +70,12 @@ async function main() {
     const startTime = Date.now()
     const result = await generateKeys();
     const resultTime = Date.now() - startTime
-    const pubkey = result.pubkey.substring(28, result.pubkey.length - 26)
-    const privkey = result.privkey.substring(33, result.privkey.length - 31)
+    //const pubkey = result.pubkey.substring(28, result.pubkey.length - 26)
+    //const privkey = result.privkey.substring(33, result.privkey.length - 31)
+    //const pubkey = result.pubkey.replace(/[\n\r]/g, "");
+    //const privkey = result.privkey.replace(/[\n\r]/g, "");
+    const pubkey = result.pubkey
+    const privkey = result.privkey
     messagecontainer.appendChild(CreateNewMessage("Server", "finished generating encryption keys in " + resultTime + "ms"))
     var socket = io();
     var lastping;
@@ -150,7 +154,10 @@ async function main() {
         resetUserList();
     });
     socket.on("onmessage", function (json) {
-        messagecontainer.appendChild(CreateNewMessage(json.author, json.content, json.timestamp))
+        var decryptor = new JSEncrypt();
+        decryptor.setPrivateKey(privkey)
+        var decryptedmessage = decryptor.decrypt(json.content)
+        messagecontainer.appendChild(CreateNewMessage(json.author, decryptedmessage, json.timestamp))
         messagecontainer.scrollTop = messagecontainer.scrollHeight;
         moveToBottom();
     });
@@ -184,7 +191,12 @@ async function main() {
             moveToBottom();
             return
         }
-        socket.emit('message', { data: messagebox.value, author: username, publickey: pubkey });
+        for (const [id, user] of Object.entries(connectedusers)) {
+            var encryptor = new JSEncrypt({ default_key_size: 1024 });
+            encryptor.setPublicKey(user.pubkey)
+            var encryptedmessage = encryptor.encrypt(messagebox.value)
+            socket.emit('directmess', { data: encryptedmessage, author: username, to: id });
+        }
         messagebox.value = ""
         typingprompt.innerHTML = ""
     };
