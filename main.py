@@ -29,13 +29,13 @@ def directmess(payload):
     message = payload["data"].strip()
     author = payload["author"].strip()
     to = payload["to"].strip()
-    print(
+    '''print(
         CVIOLET + author +
         CBEIGE + " to " +
         CVIOLET + connectedusers[int(to)]["username"] +
         CEND + ' : ' +
         CBLUE + message + CEND
-    )
+    )'''
     responsejson = {
         "author": author,
         "content": message,
