@@ -1,4 +1,3 @@
-
 String.prototype.replaceAt = function (index, replacement) {
     return this.substring(0, index) + replacement + this.substring(index + replacement.length);
 }
@@ -70,10 +69,6 @@ async function main() {
     const startTime = Date.now()
     const result = await generateKeys();
     const resultTime = Date.now() - startTime
-    //const pubkey = result.pubkey.substring(28, result.pubkey.length - 26)
-    //const privkey = result.privkey.substring(33, result.privkey.length - 31)
-    //const pubkey = result.pubkey.replace(/[\n\r]/g, "");
-    //const privkey = result.privkey.replace(/[\n\r]/g, "");
     const pubkey = result.pubkey
     const privkey = result.privkey
     messagecontainer.appendChild(CreateNewMessage("Server", "finished generating encryption keys in " + resultTime + "ms"))
