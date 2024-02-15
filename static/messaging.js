@@ -92,7 +92,7 @@ async function main() {
                 clearInterval(pinginterval);
             }
         },
-        "/reconnect": () => {
+        "/connect": () => {
             if (socket.connected == true) {
                 messagecontainer.appendChild(CreateNewMessage("Server", "You are already connected to a server."))
             }
