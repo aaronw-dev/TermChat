@@ -82,17 +82,27 @@ async function main() {
 
     const commands = {
         "/disconnect": () => {
-            socket.emit("left", { uid: userid })
-            pingcount.innerHTML = "n/a"
-            socket.ondisconnect()
-            clearInterval(pinginterval);
+            if (socket.connected == false) {
+                messagecontainer.appendChild(CreateNewMessage("Server", "You are already disconnected."))
+            }
+            else {
+                socket.emit("left", { uid: userid })
+                pingcount.innerHTML = "n/a"
+                socket.ondisconnect()
+                clearInterval(pinginterval);
+            }
         },
         "/reconnect": () => {
-            socket.connect();
-            pinginterval = setInterval(() => {
-                lastping = Date.now()
-                socket.emit("ping")
-            }, 1000);
+            if (socket.connected == true) {
+                messagecontainer.appendChild(CreateNewMessage("Server", "You are already connected to a server."))
+            }
+            else {
+                socket.connect();
+                pinginterval = setInterval(() => {
+                    lastping = Date.now()
+                    socket.emit("ping")
+                }, 1000);
+            }
         }
     }
 
